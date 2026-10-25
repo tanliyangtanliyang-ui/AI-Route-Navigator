@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Maximize2, MapPin, Info } from "lucide-react";
 
 // ---------- Hub data ----------
@@ -170,6 +170,9 @@ function HubMarker({ hub, size = 1, active, onHover, onLeave }: { hub: Hub; size
       style={{ cursor: "pointer" }}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
+      onClick={onHover}
+      onFocus={onHover}
+      tabIndex={onHover ? 0 : undefined}
     >
       {/* Outer pulse */}
       <circle r={r + 6} fill="none" stroke={s.primary} strokeWidth={1} opacity={0.4}>
@@ -253,23 +256,32 @@ function buildRoutePath(ids: string[]) {
 
 function HubsExplorer({ onClose }: { onClose: () => void }) {
   const [hover, setHover] = useState<Hub | null>(null);
+  // Esc exits; the dashboard underneath (including the selected shipment) stays as it was.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl animate-in fade-in duration-300">
+    <div role="dialog" aria-modal="true" aria-label="Exploration Mode: hub network" data-testid="exploration-mode" className="fixed inset-0 z-[1000] bg-background/95 backdrop-blur-xl animate-in fade-in duration-300">
       <div className="absolute top-6 left-6 z-10 space-y-1 max-w-md">
         <div className="text-xs font-mono uppercase tracking-widest text-primary/80 flex items-center gap-2">
           <MapPin className="w-3.5 h-3.5" /> Exploration Mode · Peninsular Malaysia
         </div>
         <div className="text-2xl font-bold tracking-tight">FarmXpress Distribution Network</div>
         <div className="text-xs text-muted-foreground font-mono">
-          Hover a hub icon to inspect its role · {HUBS.length} active hubs
+          Hover, tap or tab to a hub to inspect its role · Press Esc or Exit to return (your selected shipment stays selected)
+        </div>
+        <div className="text-[11px] text-warning" data-testid="exploration-disclaimer">
+          Illustrative network concept from the original design: these {HUBS.length} hubs are not FarmXpress dataset hubs (the dataset has HUB-001 Cameron Highlands and HUB-002 Klang Valley).
         </div>
       </div>
       <button
         onClick={onClose}
         className="absolute top-6 right-6 z-10 flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card/80 hover:bg-card hover:border-primary/50 transition-all text-sm font-mono"
       >
-        <X className="w-4 h-4" /> Exit
+        <X className="w-4 h-4" /> Exit Exploration Mode
       </button>
 
       {/* Legend */}
@@ -424,6 +436,20 @@ export function GlobeIconButton() {
         </span>
       </button>
 
+      {open && <HubsExplorer onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// Clearly labelled entry point to Exploration Mode (the small HUD icon remains available elsewhere).
+export function ExplorationModeButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} data-testid="open-exploration"
+        className="inline-flex items-center gap-2 rounded-md border border-primary/40 px-3 py-1.5 text-xs font-medium hover:bg-primary/10">
+        <Maximize2 className="w-3.5 h-3.5" /> Exploration Mode <span className="text-muted-foreground">· hub network</span>
+      </button>
       {open && <HubsExplorer onClose={() => setOpen(false)} />}
     </>
   );
